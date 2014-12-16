@@ -35,8 +35,62 @@
   add_action('shutdown', 'add_timestamps', 99999);
 
 
+ function invalidate_cache_cron(){
+  wp_schedule_single_event(time(), 'invalidate_cache');
+}
+// add_action('save_post', 'invalidate_cache_cron');
 
-	function trigger_purge () {
+
+
+// Improvement over Old Trigger Purge which would only work
+// on Post Publish - This will also purge if article is unpublished
+function transition_stat( $new, $old, $post ) {
+        if ( 'publish' !== $old && 'publish' !== $new )
+            return;
+            $post = get_post( $post );
+            $url = get_permalink( $post );
+
+        // Purge this URL
+
+        invalidate( $url );
+
+        // Purge the front page
+        invalidate( home_url( '/' ) );
+
+        // If Post_Type is a Post 
+	if ( 'post' === $post->post_type ) {
+            // Purge the main feeds
+            invalidate( home_url( '/feed/' ) );
+            invalidate( home_url( '/feed/atom/' ) );
+            invalidate( home_url( '/feed/rdf/' ) );
+	}
+    }
+
+add_action( 'save_post', 'transition_stat' );
+
+function invalidate( $url ) {
+	$response = wp_remote_get( $url, array( 'timeout' => 0.01, 'blocking' => false, 'headers' => array( 'X-Nginx-Cache-Purge' => '1' ) ) );
+	if ( is_wp_error( $response ) ) {
+	    $_errors_str = implode( " - ", $response->get_error_messages() );
+       // $this->log( "Error while purging URL. " . $_errors_str, "ERROR" );
+	   } else {
+		if ( $response[ 'response' ][ 'code' ] ) {
+		     switch ( $response[ 'response' ][ 'code' ] ) {
+			case 200:
+			   // $this->log( "- - " . $url . " *** PURGED ***" );
+			      break;
+			case 404:
+			    //  $this->log( "- - " . $url . " is currently not cached" );
+			      break;
+			default:
+			  //    $this->log( "- - " . $url . " not found (" . $response[ 'response' ][ 'code' ] . ")", "WARNING" );
+					}
+				}
+			}
+	}
+
+
+function trigger_purge () {
 	               if( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) return;       			$post = get_post( $post );
 			$url = get_permalink( $post );
 			// Purge this URL
@@ -51,9 +105,7 @@
                        //  purge( home_url( '/sitemap_index.xml' ) );
 	}
 
-	function invalidate( $url ) {
-		wp_remote_get( $url, array( 'timeout' => 0.01, 'blocking' => false, 'headers' => array( 'X-Nginx-Cache-Purge' => '1' ) ) );
-	}
 
-	add_action('publish_post', 'trigger_purge');
+// Deprecated Older Function
+//	add_action('publish_post', 'trigger_purge');
 ?>
