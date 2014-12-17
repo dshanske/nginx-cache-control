@@ -46,8 +46,8 @@ function add_timestamps() {
 // Improvement over Old Trigger Purge which would only work
 // on Post Publish - This will also purge if article is unpublished
 function transition_stat( $new, $old, $post ) {
-        if ( 'publish' !== $old && 'publish' !== $new )
-            return;
+     //   if ( 'publish' !== $old && 'publish' !== $new )
+     //       return;
             $post = get_post( $post );
             $url = get_permalink( $post );
 
@@ -80,7 +80,7 @@ function transition_stat( $new, $old, $post ) {
 					'fields'        => 'all',
 					'hierarchical'  =>false,
 				);
-				$terms = get_terms ( $taxonomy->name , $sargs );
+				$terms = wp_get_post_terms ($post->ID,  $taxonomy->name );
 				if ( !empty ( $terms ) ) {
 					foreach ( $terms as $term ) {
 						/* get the permalink for the term */
