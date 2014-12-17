@@ -9,9 +9,10 @@
  * License: CC0
  */
 
-       function add_timestamps() {
+// Add timestamps as a comment to posts
+function add_timestamps() {
             
-          //  if ($this->options['enable_stamp'] != 1)
+          //  if (options['enable_stamp'] != 1)
            //     return;
             if (is_admin())
                 return;
@@ -64,6 +65,36 @@ function transition_stat( $new, $old, $post ) {
             invalidate( home_url( '/feed/atom/' ) );
             invalidate( home_url( '/feed/rdf/' ) );
 	}
+       $args = array(
+			'public'   => true,
+		);
+		/* get taxonomies as objects */
+		$taxonomies = get_taxonomies( $args, 'objects' );
+	if ( !empty( $taxonomies ) ) {
+			foreach ( $taxonomies  as $taxonomy ) {
+				/* reset array, just in case */
+				$terms = array();
+				/* get all the terms for this taxonomy, only if not empty */
+				$sargs = array(
+					'hide_empty'    => true,
+					'fields'        => 'all',
+					'hierarchical'  =>false,
+				);
+				$terms = get_terms ( $taxonomy->name , $sargs );
+				if ( !empty ( $terms ) ) {
+					foreach ( $terms as $term ) {
+						/* get the permalink for the term */
+						$link = get_term_link ( $term->slug, $taxonomy->name );
+						/* remove the taxonomy name from the link, lots of plugins remove this for SEO, it's better to include them than leave them out
+						   in worst case, we cache some 404 as well
+						*/
+						$link = str_replace ( '/'.$taxonomy->rewrite['slug'], '', $link  );
+						/* Invalidate */
+						invalidate($link);
+					}
+				}
+			}
+		}
     }
 
 add_action( 'save_post', 'transition_stat' );
@@ -77,13 +108,13 @@ function invalidate( $url ) {
 		if ( $response[ 'response' ][ 'code' ] ) {
 		     switch ( $response[ 'response' ][ 'code' ] ) {
 			case 200:
-			   // $this->log( "- - " . $url . " *** PURGED ***" );
+			   // " *** PURGED ***"
 			      break;
 			case 404:
-			    //  $this->log( "- - " . $url . " is currently not cached" );
+			    //  " not cached"
 			      break;
 			default:
-			  //    $this->log( "- - " . $url . " not found (" . $response[ 'response' ][ 'code' ] . ")", "WARNING" );
+			  //    "WARNING"
 					}
 				}
 			}
