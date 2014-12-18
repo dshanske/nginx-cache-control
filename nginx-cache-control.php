@@ -9,6 +9,9 @@
  * License: CC0
  */
 
+if ( ! defined( 'NGINX_PURGE_KEY' ) )
+    define( 'NGINX_PURGE_KEY', '1' );
+
 // Add timestamps as a comment to posts
 function add_timestamps() {
             
@@ -39,7 +42,7 @@ function add_timestamps() {
  function invalidate_cache_cron(){
   wp_schedule_single_event(time(), 'invalidate_cache');
 }
-// add_action('save_post', 'invalidate_cache_cron');
+// add_action('publish_post', 'invalidate_cache_cron');
 
 
 
@@ -100,7 +103,8 @@ function transition_stat( $new, $old, $post ) {
 add_action( 'save_post', 'transition_stat' );
 
 function invalidate( $url ) {
-	$response = wp_remote_get( $url, array( 'timeout' => 0.01, 'blocking' => false, 'headers' => array( 'X-Nginx-Cache-Purge' => '1' ) ) );
+        if( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) return; 
+	$response = wp_remote_get( $url, array( 'timeout' => 0.01, 'blocking' => false, 'headers' => array( 'X-Nginx-Cache-Purge' => NGINX_PURGE_KEY ) ) );
 	if ( is_wp_error( $response ) ) {
 	    $_errors_str = implode( " - ", $response->get_error_messages() );
        // $this->log( "Error while purging URL. " . $_errors_str, "ERROR" );
@@ -119,24 +123,4 @@ function invalidate( $url ) {
 				}
 			}
 	}
-
-
-function trigger_purge () {
-	               if( defined('DOING_AUTOSAVE') && DOING_AUTOSAVE ) return;       			$post = get_post( $post );
-			$url = get_permalink( $post );
-			// Purge this URL
-			invalidate( $url );
-			// Purge the front page
-			invalidate( home_url( '/' ) );
-			// Purge the feed
-                        // purge( home_url( '/feed/' ) )
-			// Purge the News Sitemap
-                        // purge( home_url( '/news-sitemap.xml' ) );
-                        // Purge the sitemap index
-                       //  purge( home_url( '/sitemap_index.xml' ) );
-	}
-
-
-// Deprecated Older Function
-//	add_action('publish_post', 'trigger_purge');
 ?>
